@@ -1,0 +1,7 @@
+Changes for Expressive
+
+1.0.0 - 2017-08-19
+- first public release
+
+0.2.0 - 2016 pre-release
+- first pre-release
