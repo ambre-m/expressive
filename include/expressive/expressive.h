@@ -100,13 +100,13 @@ support base class for functors delagating their operator() to other functor(s).
 template <typename... Functors>
 struct composite_functor {
 	using functors_type = std::tuple<Functors...>;
-	
+
 	template <std::size_t I>
 	using return_type = return_type< typename std::tuple_element<I, functors_type>::type >;
-	
+
 	template <std::size_t I>
 	static constexpr std::size_t arguments_count() {return Callable_traits<typename std::tuple_element<I, functors_type>::type>::arguments_count;}
-	
+
 	using arguments_type = typename std::common_type< typename Callable_traits<Functors>::arguments_type... >::type;
 
 	constexpr composite_functor(Functors const&... functors) : functors(functors...) {
@@ -132,7 +132,7 @@ struct composite_functor {
 //unary compositing specialization
 template <typename F>
 struct composite_functor<F> {
-	using return_type = typename Callable_traits<F>::return_type;	
+	using return_type = typename Callable_traits<F>::return_type;
 	using arguments_type = typename Callable_traits<F>::arguments_type;
 
 	static constexpr std::size_t arguments_count() {return Callable_traits<F>::arguments_count;}
@@ -161,9 +161,9 @@ template <typename F>
 struct make_expression_t: public composite_functor<F> {
 	using base_t = composite_functor<F>;
 	using value_type = typename base_t::return_type;
-	
+
 	constexpr make_expression_t(F f): base_t(f) {}
-	
+
 	template <typename... Args>
 	constexpr
 	typename std::enable_if< base_t::template call_check<Args...>(), value_type>::type
@@ -199,7 +199,7 @@ constexpr auto literal(T t) {return literal_t<T, Args...>{t};}
 template <typename... Args>
 struct literal_factory {
 	template <typename T>
-	constexpr auto operator()(T t) {return literal<Args..., T>(t);}
+	constexpr auto operator()(T t) {return literal<Args...>(t);}
 };
 
 
@@ -256,11 +256,11 @@ template <typename Operator, typename F>
 struct unop_t: public composite_functor<F> {
 	using base_t = composite_functor<F>;
 	using value_type = applied_unary_type<Operator, typename base_t::return_type>;
-	
+
 	unop_t(F f) : base_t(f) {
 		static_assert( is_applicable_unary<Operator, typename base_t::return_type>(), "incompatible functor value" );
 	}
-	
+
 	template <typename... Args>
 	constexpr
 	value_type operator()(Args... args) const {
@@ -289,7 +289,7 @@ struct Callable_traits<symetric_binop_t<FL,Operator,FR>> {
 template <typename FL, typename Operator, typename FR>
 struct symetric_binop_t : composite_functor<FL, FR>, private Operator {
 	using base_t = composite_functor<FL, FR>;
-	
+
 	using FL_return_type = typename base_t::template return_type<0>;
 	using FR_return_type = typename base_t::template return_type<1>;
 
@@ -301,13 +301,13 @@ struct symetric_binop_t : composite_functor<FL, FR>, private Operator {
 			"incompatible functors value types"
 		);
 	}
-	
+
 	template <typename... Args>
 	constexpr
 	value_type
 	operator()(Args... args) const {
 		static_assert(base_t::template call_check<Args...>(), "wrong arguments types or count");
-		
+
 		return Operator::operator()( base_t::template f<0>()(args...), base_t::template f<1>()(args...) );
 	}
 
@@ -382,7 +382,7 @@ struct compose_t: public composite_functor<Inners...> {
 
 		return impl( std::index_sequence_for<Inners...>{} , args...);
 	}
-	
+
 	// *** call details *** //
 	//actual call
 	template<std::size_t... Is, typename... Args>
@@ -397,7 +397,7 @@ struct compose_t: public composite_functor<Inners...> {
 	bool composable_check(std::index_sequence<Is...>){
 		return meta::all<std::is_convertible< return_type<Inners>, argument_type<Outer, Is> >::value...>();
 	}
-	
+
 	Outer outer;
 };
 
@@ -425,12 +425,12 @@ struct compose_t<Outer, Inner>: public composite_functor<Inner> {
 		static_assert(base_t::template call_check<Args...>(), "wrong arguments type or count");
 		return impl(args...);
 	}
-	
+
 	template <typename... Args>
 	constexpr value_type impl(Args... args) const {
 		return outer( base_t::f(args...) );
 	}
-	
+
 	Outer outer;
 };
 
@@ -440,16 +440,16 @@ template <typename Outer>
 struct compose_t<Outer>: public composite_functor<Outer> {
 	using base_t = composite_functor<Outer>;
 	using value_type = typename base_t::return_type;
-	
+
 	constexpr compose_t(Outer f): base_t(f) {}
-	
+
 	template <typename... Args>
 	constexpr value_type
 	operator()(Args... args) const {
 		static_assert(base_t::template call_check<Args...>(), "wrong arguments type or count");
 		return impl(args...);
 	}
-	
+
 	template <typename... Args>
 	constexpr value_type impl(Args... args) const {return f(args...);}
 };
